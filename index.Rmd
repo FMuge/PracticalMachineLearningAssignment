@@ -1,0 +1,178 @@
+---
+title: "Prediction Assignment Project"
+output: html_document
+author: Faden Müge MERSÝN
+---
+
+
+
+## Loading Related Libraries
+
+```{r libraries}
+library (caret)
+library (randomForest)
+library (rpart)
+library (gbm)
+library (plyr)
+```
+## Obtaining and Cleaning Data
+
+### Downloading Data:
+
+Data for this assignment is obtained from http://groupware.les.inf.puc-rio.br/har.
+
+```{r downloading}
+
+if (!file.exists("./pml-training.csv")) {
+    fileUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+    download.file(fileUrl, destfile = "./pml-training.csv")
+}
+
+if (!file.exists("./pml-testing.csv")) {
+    fileUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+    download.file(fileUrl, destfile = "./pml-testing.csv")    
+}
+```
+
+### Reading Data:
+     
+```{r reading}  
+ 
+training<-read.csv("./pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+testing<-read.csv("./pml-testing.csv", na.strings=c("NA","#DIV/0!", ""))
+
+dim(training); dim(testing)
+```
+
+### Controlling Data Set Variables
+
+```{r controls}
+table(names(training)[1:159]==names(testing)[1:159])
+```
+It is verified that all variable names are the same in training and testing data sets except for the last variable. The last variable in the testing set identifies the problem number which will be used for 'Course Project: Submission' part of this assignment.  
+
+### Removing Zero Covariates
+
+```{r nsv}
+
+nsv <- nearZeroVar(training,saveMetrics = T)
+training <- training [,!nsv$nzv]
+testing <- testing [, !nsv$nzv]
+```
+
+### Removing Unrelated Variables 
+```{r dataCleaning1}
+
+training<-training[,-(1:6)]
+testing <-testing[,-(1:6)]
+```
+### Removing Variables with Missing Values 
+
+```{r dataCleaning2}
+
+training<-training[,colSums(is.na(training)) == 0]
+testing <-testing[,colSums(is.na(testing)) == 0]
+
+dim(training);dim(testing)
+```
+(Note: Initial method selection was tried to be done without variable removal with missing values. After obtaining predictions, it was observed that model creation functions were not performed properly.)  
+
+### Partitioning Training Data for Cross Validation
+
+```{r partitioning}
+ 
+inTrain <- createDataPartition(y=training$classe, p=.7,list=F)
+myTraining <- training[inTrain,]
+myTesting <- training [-inTrain,]
+
+dim(myTraining);dim(myTesting)
+```
+
+
+## Model Selection Analysis and Cross Validation
+
+### Setting Train Control Options
+
+Train Control will be used to define preprocessing type (PCA) and cross validation method. Considering performans issues cross validation will be executed with low k.
+
+
+```{r trainControl}
+trainControl <-  trainControl(method = "cv", preProcOptions="pca",   number=7,allowParallel=T)
+```
+
+### Applied Models
+
+Models to be applied for model selection are:
+
+    1. Random Forest (rf), 
+    2. CART Model (rpart),
+    3. Generalized Boosted Regression Model (gbm).
+
+
+```{r trainModels}
+model1 <- train(classe ~ ., data = myTraining, method = "rf", trControl= trainControl)
+model2 <- train(classe ~ ., data = myTraining, method = "rpart", trControl= trainControl)
+model3 <- train(classe ~ ., data = myTraining, method = "gbm", trControl= trainControl, verbose=F)
+```
+(Note: In addition to these three models, several other models have been tried. Without generating error these three models have been selected.)
+
+### Predictions:
+
+```{r prediction}
+pred1 <- predict(model1,myTesting)
+pred2 <- predict(model2,myTesting)
+pred3 <- predict(model3,myTesting)
+```
+
+### Cross Validation
+
+**Confusion Matrix of Model1 (Random Forest Model):**
+
+```{r confMatrix1}
+cm1 <- confusionMatrix (pred1,myTesting$classe)
+cm1
+```
+
+**Confusion Matrix of Model2 (CART Model):**
+
+```{r confMatrix2}
+cm2 <- confusionMatrix(pred2,myTesting$classe)
+cm2
+```
+
+**Confusion Matrix of Model3 (Generalized Boosted Regression Model):**
+
+```{r confMatrix3}
+cm3 <- confusionMatrix(pred3,myTesting$classe)
+cm3
+```
+
+
+##Decision
+
+**Random Forest Model** is selected with the highest accuracy (`r round(cm1$overall[1],4)` ) which implies that out of error rate is `r round(1-cm1$overall[1],3)` . It is also observed that the Generalized Boosted Regression model has also high accuracy rates.
+
+**Model1** is applied to get predictions for testing data set.
+```{r finalPrediction}
+predFinal <- predict(model1,testing)
+```
+
+Predicted values below will be submitted for 'Course Project: Submission' part of the project.
+```{r}
+predFinal
+```
+
+
+## Course Project: Submission
+
+```{r writeFiles}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predFinal)
+```
