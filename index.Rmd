@@ -19,7 +19,7 @@ library (plyr)
 
 ### Downloading Data:
 
-Data for this assignment is obtained from http://groupware.les.inf.puc-rio.br/har.
+Data is obtained from http://groupware.les.inf.puc-rio.br/har.
 
 ```{r downloading}
 
@@ -93,7 +93,7 @@ dim(myTraining);dim(myTesting)
 
 ### Setting Train Control Options
 
-Train Control will be used to define preprocessing type (PCA) and cross validation method. Considering performans issues cross validation will be executed with low k.
+Train Control will be used to define preprocessing type (PCA) and cross validation method. Considering performance issues cross validation will be executed with limited number of k.
 
 
 ```{r trainControl}
@@ -150,7 +150,7 @@ cm3
 
 ##Decision
 
-**Random Forest Model** is selected with the highest accuracy (`r round(cm1$overall[1],4)` ) which implies that out of error rate is `r round(1-cm1$overall[1],3)` . It is also observed that the Generalized Boosted Regression model has also high accuracy rates.
+**Random Forest Model** is selected with the highest accuracy (`r round(cm1$overall[1],4)` ) which implies that out of error rate is `r round(1-cm1$overall[1],4)` . It is also observed that the Generalized Boosted Regression model has also high accuracy rates.
 
 **Model1** is applied to get predictions for testing data set.
 ```{r finalPrediction}
